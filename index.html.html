@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gamified Study Quest - Studyplus Edition</title>
+  <style>
+    :root {
+      --bg: #090d16; --card: #131b2e; --card-border: #1e2d4a;
+      --accent-blue: #38bdf8; --accent-purple: #a855f7; --accent-gold: #fbbf24;
+      --danger: #f43f5e; --success: #34d399; --text: #f8fafc; --text-sub: #94a3b8;
+    }
+
+    body.theme-default { --bg: #090d16; --card: #131b2e; --card-border: #1e2d4a; }
+    body.theme-sakura { --bg: #2d121d; --card: #4a1d31; --card-border: #832b53; --accent-blue: #f472b6; }
+    body.theme-magma { --bg: #1c0a0a; --card: #381212; --card-border: #6b2121; --accent-blue: #f97316; }
+    body.theme-space { --bg: #030712; --card: #0b1329; --card-border: #1d2a4d; --accent-blue: #818cf8; }
+    body.theme-cyber { --bg: #05141c; --card: #0d2736; --card-border: #154561; --accent-blue: #06b6d4; }
+    body.theme-library { --bg: #191410; --card: #2e241d; --card-border: #4a3a2f; --accent-blue: #eab308; }
+    body.theme-matsuri { --bg: #1a0f1a; --card: #33152e; --card-border: #5c1d4a; --accent-blue: #f43f5e; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 16px; max-width: 800px; margin: 0 auto; line-height: 1.5; transition: background 0.3s; }
+
+    .card {
+      background: var(--card); border-radius: 16px; padding: 18px; margin-bottom: 16px;
+      border: 1px solid var(--card-border); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); transition: background 0.3s, border-color 0.3s;
+    }
+    h2 { font-size: 1.1rem; color: #e2e8f0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .stat-box {
+      background: rgba(15, 23, 42, 0.6); padding: 10px; border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05); text-align: center;
+    }
+    .stat-val { font-size: 1.3rem; font-weight: 800; color: var(--accent-gold); }
+    .stat-label { font-size: 0.72rem; color: var(--text-sub); margin-top: 2px; }
+
+    .bar-container { background: #0b1120; border-radius: 999px; height: 10px; overflow: hidden; margin: 4px 0 10px 0; border: 1px solid rgba(255, 255, 255, 0.08); }
+    .bar-fill { height: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .hp-fill { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+    .xp-fill { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+
+    .monster-area { text-align: center; padding: 10px; position: relative; }
+    .canvas-container { position: relative; width: 140px; height: 140px; margin: 0 auto 8px auto; }
+    canvas { width: 100%; height: 100%; }
+    .shake { animation: shake 0.3s ease-in-out; }
+    @keyframes shake { 0%,100%{transform:translate(0);} 20%{transform:translate(-8px, 4px);} 60%{transform:translate(8px, -4px);} }
+
+    .upgrade-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    .up-btn {
+      background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border);
+      padding: 10px; border-radius: 10px; color: var(--text); text-align: left; cursor: pointer; transition: 0.2s;
+    }
+    .up-btn:hover { border-color: var(--accent-blue); transform: translateY(-2px); }
+    .up-title { font-weight: bold; font-size: 0.82rem; }
+    .up-cost { font-size: 0.72rem; color: var(--accent-purple); margin-top: 2px; font-weight: bold; }
+
+    .timer-display { font-size: 2.8rem; font-weight: 900; text-align: center; font-family: monospace; color: var(--accent-blue); margin: 6px 0; }
+    .active-quest-label { text-align: center; font-size: 0.85rem; color: var(--accent-gold); font-weight: bold; min-height: 1.2em; }
+    .btn-group { display: flex; gap: 8px; }
+
+    button {
+      background: linear-gradient(135deg, #0284c7, #2563eb); color: white; border: none;
+      padding: 10px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap;
+    }
+    button:hover { opacity: 0.9; }
+    button.secondary { background: #1e293b; color: #94a3b8; }
+    button.secondary:hover { background: #334155; color: white; }
+    button.danger { background: linear-gradient(135deg, #e11d48, #be123c); }
+    button.gold { background: linear-gradient(135deg, #d97706, #f59e0b); }
+    button.purple { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+
+    .add-quest-form {
+      display: flex; gap: 8px; margin-bottom: 12px; background: rgba(15, 23, 42, 0.4); padding: 8px; border-radius: 10px; border: 1px dashed var(--card-border);
+    }
+    .add-quest-form input {
+      background: #090d16; border: 1px solid var(--card-border); color: var(--text);
+      padding: 8px 10px; border-radius: 6px; font-size: 0.82rem;
+    }
+    .add-quest-form input[type="text"] { flex: 1; min-width: 0; }
+    .add-quest-form input[type="number"] { width: 70px; }
+
+    .quest-item {
+      display: flex; align-items: center; justify-content: space-between; padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.5); border-radius: 10px; margin-bottom: 8px; border: 1px solid var(--card-border); gap: 12px;
+    }
+    .quest-item.done { opacity: 0.7; border-color: var(--success); }
+    .quest-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+    .quest-title { font-weight: bold; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .quest-meta { font-size: 0.73rem; color: var(--text-sub); margin-top: 2px; }
+    .quest-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+    .btn-del { background: transparent; border: none; color: #64748b; cursor: pointer; font-size: 0.95rem; padding: 4px 6px; }
+    .btn-del:hover { color: var(--danger); }
+
+    .grid-box { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+    .item-card {
+      background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); padding: 12px; border-radius: 10px;
+      display: flex; flex-direction: column; justify-content: space-between; gap: 8px;
+    }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8);
+      display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-content {
+      background: var(--card); border: 2px solid var(--accent-gold); border-radius: 16px; padding: 24px;
+      max-width: 360px; text-align: center; box-shadow: 0 0 30px rgba(251, 191, 36, 0.3); transform: scale(0.9); transition: 0.3s;
+    }
+    .modal-overlay.active .modal-content { transform: scale(1); }
+
+    .log-box { background: #080d1a; height: 100px; overflow-y: auto; padding: 10px; font-size: 0.78rem; border-radius: 8px; font-family: monospace; color: var(--text-sub); }
+    .log-entry { margin-bottom: 4px; }
+    .log-entry.damage { color: #f87171; }
+    .log-entry.heal { color: #34d399; }
+    .log-entry.level { color: #fbbf24; font-weight: bold; }
+
+    /* 📊 Studyplus風 月〜日 グラフスタイル */
+    .chart-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    }
+    .week-nav-btn {
+      background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border); color: var(--text);
+      padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; transition: 0.2s;
+    }
+    .week-nav-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+    .week-period-tag {
+      font-size: 0.78rem; font-weight: bold; color: var(--accent-gold);
+      background: rgba(251, 191, 36, 0.1); padding: 4px 10px; border-radius: 12px; border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+    .chart-container {
+      display: flex; align-items: flex-end; justify-content: space-between; height: 140px;
+      padding: 24px 10px 10px 10px; background: rgba(11, 17, 32, 0.8); border-radius: 12px;
+      border: 1px solid var(--card-border); position: relative; margin-top: 6px;
+    }
+    .chart-bar-wrapper {
+      flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%;
+      justify-content: flex-end; position: relative; cursor: pointer;
+    }
+    .chart-bar {
+      width: 60%; max-width: 28px; background: linear-gradient(180deg, var(--accent-blue), #0284c7);
+      border-radius: 4px 4px 0 0; transition: height 0.4s ease, background 0.2s; min-height: 4px;
+    }
+    .chart-bar-wrapper:hover .chart-bar { background: linear-gradient(180deg, var(--accent-gold), #d97706); }
+    .chart-label { font-size: 0.68rem; color: var(--text-sub); margin-top: 6px; }
+    
+    .chart-tooltip {
+      position: absolute; top: -34px; background: #0f172a; border: 1px solid var(--accent-gold);
+      color: #fff; font-size: 0.7rem; font-weight: bold; padding: 3px 8px; border-radius: 6px;
+      white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+      transform: translateY(4px); box-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 10;
+    }
+    .chart-bar-wrapper:hover .chart-tooltip { opacity: 1; transform: translateY(0); }
+
+    .comparison-badge {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: bold;
+      padding: 4px 10px; border-radius: 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--card-border);
+    }
+    .badge-up { color: var(--success); border-color: rgba(52, 211, 153, 0.3); }
+    .badge-down { color: var(--danger); border-color: rgba(244, 63, 94, 0.3); }
+
+    .achieve-item {
+      display: flex; justify-content: space-between; align-items: center; padding: 8px 12px;
+      background: rgba(15, 23, 42, 0.4); border-radius: 8px; border: 1px solid var(--card-border); margin-bottom: 6px; font-size: 0.8rem;
+    }
+    .achieve-item.cleared { border-color: var(--accent-gold); background: rgba(251, 191, 36, 0.05); }
+  </style>
+    <!-- Firebase (クラウド同期) の読み込み -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // お手元のFirebase設定情報
+    const firebaseConfig = {
+      apiKey: "AIzaSyDQw03zribC0gmyc5PdBJbcfaJes5zio40",
+      authDomain: "study-quest-40cef.firebaseapp.com",
+      projectId: "study-quest-40cef",
+      storageBucket: "study-quest-40cef.firebasestorage.app",
+      messagingSenderId: "922362653172",
+      appId: "1:922362653172:web:8fe53c89636c388158f1a1",
+      measurementId: "G-SMJ80S451X",
+      databaseURL: "https://study-quest-40cef-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const userRef = ref(db, 'study_quest_save_data');
+
+    // クラウド保存用関数
+    window.syncSave = function(data) {
+      set(userRef, data);
+    };
+
+    // リアルタイム読み込み用関数
+    window.initSync = function(onDataReceived) {
+      onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          onDataReceived(data);
+        }
+      });
+    };
+  </script>
+</head>
+</head>
+<body class="theme-default" id="body-root">
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <div style="font-size:0.85rem; color:var(--accent-gold); font-weight:bold;" id="title-display">🔰 見習い受験生</div>
+      <button class="danger" style="padding:2px 8px; font-size:0.7rem; width:auto;" onclick="resetAllData()">🔄 進捗リセット</button>
+    </div>
+    <div class="status-grid">
+      <div class="stat-box"><div class="stat-label">LEVEL</div><div class="stat-val" id="p-level">1</div></div>
+      <div class="stat-box"><div class="stat-label">MP (スキルpt)</div><div class="stat-val" id="p-mp" style="color:var(--accent-purple)">0</div></div>
+      <div class="stat-box"><div class="stat-label">連続ストリーク</div><div class="stat-val" id="p-streak" style="color:var(--success)">0日</div></div>
+    </div>
+    
+    <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+      <span>HP (体力)</span><span id="hp-text">100 / 100</span>
+    </div>
+    <div class="bar-container"><div class="bar-fill hp-fill" id="hp-bar" style="width: 100%;"></div></div>
+
+    <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+      <span>NEXT XP</span><span id="xp-text">0 / 500</span>
+    </div>
+    <div class="bar-container"><div class="bar-fill xp-fill" id="xp-bar" style="width: 0%;"></div></div>
+  </div>
+
+  <!-- 📊 Studyplus風 月曜〜日曜 週間学習レポート -->
+  <div class="card">
+    <h2>
+      <span>📊 週間学習レポート (月〜日)</span>
+      <span id="comp-badge" class="comparison-badge badge-up">前週比: --%</span>
+    </h2>
+
+    <div class="chart-header">
+      <button class="week-nav-btn" onclick="changeWeek(-1)">◀️ 前の週</button>
+      <div class="week-period-tag" id="week-period-text">📅 今週の期間</div>
+      <button class="week-nav-btn" onclick="changeWeek(1)">次の週 ▶️</button>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px; text-align:center;">
+      <div style="background:rgba(15, 23, 42, 0.5); padding:8px; border-radius:8px;">
+        <div style="font-size:0.68rem; color:var(--text-sub);" id="this-week-title">表示中の週</div>
+        <div style="font-weight:bold; font-size:1rem; color:var(--accent-blue);" id="this-week-total">0分</div>
+      </div>
+      <div style="background:rgba(15, 23, 42, 0.5); padding:8px; border-radius:8px;">
+        <div style="font-size:0.68rem; color:var(--text-sub);">その前の週</div>
+        <div style="font-weight:bold; font-size:1rem; color:var(--text-sub);" id="last-week-total">0分</div>
+      </div>
+      <div style="background:rgba(15, 23, 42, 0.5); padding:8px; border-radius:8px;">
+        <div style="font-size:0.68rem; color:var(--text-sub);">累計学習時間</div>
+        <div style="font-weight:bold; font-size:1rem; color:var(--accent-gold);" id="total-study-time">0時間</div>
+      </div>
+    </div>
+
+    <div style="font-size:0.72rem; color:var(--text-sub); margin-bottom:4px;">※「前/次の週」ボタンで過去の記録も閲覧できます</div>
+    <div class="chart-container" id="weekly-chart"></div>
+  </div>
+
+  <div class="card monster-area">
+    <div id="enemy-title" style="font-weight:800; font-size:1.1rem; color:var(--accent-gold);">STAGE 1 - 計算ミスの小鬼</div>
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="monsterCanvas" width="140" height="140"></canvas>
+    </div>
+    <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px;">
+      <span>ENEMY HP</span><span id="enemy-hp-text">800 / 800</span>
+    </div>
+    <div class="bar-container"><div class="bar-fill hp-fill" id="enemy-hp-bar" style="width: 100%;"></div></div>
+    <div style="font-size:0.72rem; color:var(--text-sub);">※タイマー完走で「勉強時間×ATK」のダメージ！</div>
+  </div>
+
+  <div class="card">
+    <h2>ステータス強化 (MP消費)</h2>
+    <div class="upgrade-grid">
+      <button class="up-btn" onclick="upgrade('hp')">
+        <div class="up-title">❤️ 最大体力: <span id="st-maxHp">100</span></div>
+        <div class="up-cost">必要MP: <span id="cost-hp">10</span></div>
+      </button>
+      <button class="up-btn" onclick="upgrade('atk')">
+        <div class="up-title">⚔️ 攻撃力: <span id="st-atk">10</span></div>
+        <div class="up-cost">必要MP: <span id="cost-atk">10</span></div>
+      </button>
+      <button class="up-btn" onclick="upgrade('xpBoost')">
+        <div class="up-title">📈 クエストXP増加: <span id="st-xpBoost">1.0</span>x</div>
+        <div class="up-cost">必要MP: <span id="cost-xpBoost">15</span></div>
+      </button>
+      <button class="up-btn" onclick="upgrade('def')">
+        <div class="up-title">🛡️ 防御力: <span id="st-def">0</span>%</div>
+        <div class="up-cost">必要MP: <span id="cost-def">10</span></div>
+      </button>
+      <button class="up-btn" onclick="upgrade('crit')">
+        <div class="up-title">💥 会心率: <span id="st-crit">5</span>%</div>
+        <div class="up-cost">必要MP: <span id="cost-crit">15</span></div>
+      </button>
+      <button class="up-btn" onclick="upgrade('boost')">
+        <div class="up-title">✨ MP倍率: <span id="st-boost">1.0</span>x</div>
+        <div class="up-cost">必要MP: <span id="cost-boost">20</span></div>
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🎒 インベントリ（所持品・装備）</h2>
+    <div style="font-size:0.78rem; color:var(--text-sub); margin-bottom:10px;">獲得した背景・称号・アイテムをいつでも自由に選んで使用できます！</div>
+    <div id="inventory-list" class="grid-box"></div>
+  </div>
+
+  <div class="card">
+    <h2>🛒 冒険者のショップ</h2>
+    <div class="grid-box">
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">🧪 ポーション</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">HPを 50 回復する</div>
+        </div>
+        <button class="gold" style="padding:6px; font-size:0.75rem;" onclick="buyItem('potion')">買: 15 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">💣 爆裂魔法</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">敵に 1000 即時ダメージ</div>
+        </div>
+        <button class="gold" style="padding:6px; font-size:0.75rem;" onclick="buyItem('bomb')">買: 30 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">☕ 徹夜のコーヒー</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">HPを20消費して威力1.5倍</div>
+        </div>
+        <button class="gold" style="padding:6px; font-size:0.75rem;" onclick="buyItem('coffee')">買: 10 MP</button>
+      </div>
+
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">🎫 ご褒美チケット</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">勉強達成で自分へのご褒美を解禁！</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyRewardTicket()">買: 30 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">👑 称号【限界突破者】</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">ステータス欄の肩書きを変更</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTitle('🔥 限界突破者', 40)">買: 40 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">👑 称号【絶対合格の覇王】</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">志望校撃破の覚悟を示す</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTitle('👑 絶対合格の覇王', 70)">買: 70 MP</button>
+      </div>
+
+      <!-- 背景テーマ -->
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">🌸 サクラ咲くキャンパス</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">合格を呼び寄せる桜色の世界</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTheme('sakura', '🌸 サクラ咲くキャンパス', 50)">買: 50 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">🌋 灼熱マグマダンジョン</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">熱い集中力で追い込む空間</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTheme('magma', '🌋 灼熱マグマ', 70)">買: 70 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">🌌 宇宙ステーション</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">無音で洗練された超集中空間</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTheme('space', '🌌 宇宙ステーション', 90)">買: 90 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">⚡ ネオンサイバーシティ</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">近未来感溢れるゲーミング空間</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTheme('cyber', '⚡ ネオンサイバー', 100)">買: 100 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">📚 深遠のライブラリー</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">静寂と知性が宿る大図書館</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTheme('library', '📚 深遠のライブラリー', 110)">買: 110 MP</button>
+      </div>
+      <div class="item-card">
+        <div>
+          <div style="font-weight:bold; font-size:0.85rem;">🏮 宵闇の学園夜市</div>
+          <div style="font-size:0.72rem; color:var(--text-sub);">ノスタルジックな紅提灯の夜</div>
+        </div>
+        <button class="purple" style="padding:6px; font-size:0.75rem;" onclick="buyTheme('matsuri', '🏮 宵闇の学園夜市', 120)">買: 120 MP</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>⏱️ 集中タイマー</h2>
+    <div class="active-quest-label" id="active-quest-label">フリー集中モード</div>
+    <div class="timer-display" id="timer-display">25:00</div>
+    <div class="btn-group">
+      <button id="timer-btn" onclick="toggleTimer()">スタート</button>
+      <button class="secondary" onclick="setTimerMinutes(5, null)">5分</button>
+      <button class="secondary" onclick="setTimerMinutes(25, null)">25分</button>
+      <button class="secondary" onclick="setTimerMinutes(60, null)">60分</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>
+      <span>📋 受験デイリークエスト</span>
+      <button class="danger" style="width:auto; padding:4px 10px; font-size:0.75rem;" onclick="finishDay()">1日を終了(夜間反撃)</button>
+    </h2>
+
+    <div class="add-quest-form">
+      <input type="text" id="new-q-title" placeholder="新しいクエスト名 (例: セミナー物理 30分)">
+      <input type="number" id="new-q-min" placeholder="時間(分)" min="1" max="180" value="30">
+      <button style="width:auto; padding:6px 12px; font-size:0.8rem;" onclick="addCustomQuest()">➕ 追加</button>
+    </div>
+
+    <div id="quest-list"></div>
+  </div>
+
+  <div class="card">
+    <h2>🏆 冒険の実績 (アチーブメント)</h2>
+    <div id="achievement-list"></div>
+  </div>
+
+  <div class="card">
+    <h2>📜 冒険の記録</h2>
+    <div class="log-box" id="log-box"></div>
+  </div>
+
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-content">
+      <div style="font-size:2.5rem;">⚔️</div>
+      <h3 style="color:var(--accent-gold); margin-bottom:8px;">出陣ボーナス！</h3>
+      <p style="font-size:0.85rem; color:var(--text-sub); margin-bottom:16px;">今日も自分との闘いが始まる！勉強で強さを証明せよ！</p>
+      <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; margin-bottom:16px; text-align:left; font-size:0.85rem;" id="login-bonus-desc">
+        <div>✨ 基本支給: <strong>+5 MP / +20 XP</strong></div>
+        <div>💖 HP補給: <strong>+30 HP 回復</strong></div>
+        <div id="streak-bonus-text" style="color:var(--accent-gold); font-weight:bold; margin-top:4px;"></div>
+      </div>
+      <button class="gold" onclick="closeLoginModal()">戦場へ向かう！</button>
+    </div>
+  </div>
+
+  <script>
+    const mobNames = ["計算ミスの小鬼", "英単語の亡霊", "導出漏れの影", "睡魔の使い", "集中力泥棒", "公式忘却の霊"];
+    const bossNames = ["【BOSS】青チャートの魔神", "【BOSS】セミナー物理の竜", "【BOSS】過去問の皇帝", "【BOSS】共通テストの壁"];
+
+    const weekdayLabels = ["月", "火", "水", "木", "金", "土", "日"];
+    let weekOffset = 0; // 0: 今週, -1: 先週, -2: 先々週...
+
+    let defaultQuests = [
+      { id: 1, title: "【物理】セミナー物理（プロセス・基本問題）", min: 60, xp: 300, done: false },
+      { id: 2, title: "【数学】青チャート数Ⅲ・C（例題演習）", min: 60, xp: 450, done: false },
+      { id: 3, title: "【数学】青チャート数Ⅱ・B（復習）", min: 45, xp: 250, done: false },
+      { id: 4, title: "【英語】英検過去問演習（1回分）", min: 60, xp: 450, done: false },
+      { id: 5, title: "【英語】ターゲット単語暗記", min: 20, xp: 140, done: false },
+      { id: 6, title: "【英語】速読英熟語（音読・暗記）", min: 30, xp: 160, done: false }
+    ];
+
+    let achievementsList = [
+      { id: 'study_10h', title: '⏱️ 見習い研究者', desc: '累計勉強時間 10時間を達成', targetMinutes: 600, rewardMp: 30, cleared: false },
+      { id: 'study_50h', title: '📚 知識の探求者', desc: '累計勉強時間 50時間を達成', targetMinutes: 3000, rewardMp: 80, cleared: false },
+      { id: 'streak_3', title: '🔥 三日坊主克服', desc: '連続ストリーク 3日達成', targetStreak: 3, rewardMp: 20, cleared: false },
+      { id: 'streak_7', title: '⚡ 執念の学習者', desc: '連続ストリーク 7日達成', targetStreak: 7, rewardMp: 50, cleared: false },
+      { id: 'defeat_10', title: '⚔️ モンスターハンター', desc: 'モンスターを累計10体撃破', targetKills: 10, rewardMp: 40, cleared: false }
+    ];
+
+    function createInitialState() {
+      return {
+        level: 1, xp: 0, maxXp: 500, hp: 100, maxHp: 100, mp: 0, streak: 0,
+        stage: 1, enemyHp: 800, enemyMaxHp: 800, isBoss: false, enemyName: "計算ミスの小鬼",
+        stats: { atk: 10, def: 0, crit: 5, boost: 1.0, xpBoost: 1.0 },
+        costs: { hp: 10, atk: 10, def: 10, crit: 15, boost: 20, xpBoost: 15 },
+        quests: JSON.parse(JSON.stringify(defaultQuests)),
+        inventory: [
+          { type: 'theme', id: 'default', name: '🌌 サイバーダーク (初期)' },
+          { type: 'title', id: '🔰 見習い受験生', name: '肩書き: 🔰 見習い受験生' }
+        ],
+        currentTheme: 'default',
+        currentTitle: '🔰 見習い受験生',
+        lastLoginDate: "",
+        damageMultiplier: 1.0,
+        studyLogs: {},
+        totalKills: 0,
+        achievements: JSON.parse(JSON.stringify(achievementsList))
+      };
+    }
+
+    let state = createInitialState();
+    let activeQuestId = null;
+
+    function resetAllData() {
+      if(!confirm("すべての学習進捗・ステータスを初期化して、リセットしますか？")) return;
+      localStorage.removeItem('study_game_rpg_full_save');
+      state = createInitialState();
+      setTheme('default');
+      save();
+      render();
+      addLog("🔄 データのリセットが完了しました！新たな旅の始まりです！", "level");
+    }
+
+    function checkLoginBonus() {
+      const today = new Date().toDateString();
+      if(state.lastLoginDate !== today) {
+        state.lastLoginDate = today;
+        let baseMp = 5, baseXp = 20, streakMpBonus = state.streak * 2;
+        let totalMp = baseMp + streakMpBonus;
+        state.mp += totalMp;
+        state.hp = Math.min(state.maxHp, state.hp + 30);
+        addXP(baseXp);
+
+        let streakTextEl = document.getElementById('streak-bonus-text');
+        if(state.streak > 0) {
+          streakTextEl.innerText = `🔥 連続${state.streak}日達成ボーナス: +${streakMpBonus} MP!`;
+        } else {
+          streakTextEl.innerText = "";
+        }
+
+        save();
+        document.getElementById('login-modal').classList.add('active');
+      }
+    }
+
+    function closeLoginModal() {
+      document.getElementById('login-modal').classList.remove('active');
+    }
+
+    function drawMonster() {
+      const cvs = document.getElementById('monsterCanvas');
+      if(!cvs) return;
+      const ctx = cvs.getContext('2d');
+      ctx.clearRect(0, 0, 140, 140);
+
+      const cx = 70, cy = 70;
+      const time = Date.now() * 0.003;
+      const hover = Math.sin(time) * 5;
+
+      if(state.isBoss) {
+        let grad = ctx.createRadialGradient(cx, cy + hover, 10, cx, cy + hover, 60);
+        grad.addColorStop(0, 'rgba(168, 85, 247, 0.8)');
+        grad.addColorStop(0.6, 'rgba(239, 68, 68, 0.4)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(cx, cy + hover, 60, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 30 + hover); ctx.lineTo(cx + 30, cy + hover);
+        ctx.lineTo(cx, cy + 30 + hover); ctx.lineTo(cx - 30, cy + hover);
+        ctx.closePath(); ctx.fill();
+
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath(); ctx.arc(cx - 10, cy - 4 + hover, 5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 10, cy - 4 + hover, 5, 0, Math.PI*2); ctx.fill();
+      } else {
+        let grad = ctx.createRadialGradient(cx, cy + hover, 5, cx, cy + hover, 40);
+        grad.addColorStop(0, 'rgba(56, 189, 248, 0.9)');
+        grad.addColorStop(0.7, 'rgba(15, 23, 42, 0.5)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(cx, cy + hover, 40, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = "#f43f5e";
+        ctx.beginPath(); ctx.arc(cx - 8, cy - 3 + hover, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 8, cy - 3 + hover, 4, 0, Math.PI*2); ctx.fill();
+      }
+    }
+    setInterval(drawMonster, 50);
+
+    function playSE(freq = 440, type = 'sine') {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = type; osc.frequency.value = freq;
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(); gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.2);
+        osc.stop(ctx.currentTime + 0.2);
+      } catch(e){}
+    }
+
+    function save() { 
+  localStorage.setItem('study_game_rpg_full_save', JSON.stringify(state)); 
+  if (window.syncSave) {
+    window.syncSave(state);
+  }
+}
+
+function load() {
+  const d = localStorage.getItem('study_game_rpg_full_save');
+  if (d) { state = Object.assign(state, JSON.parse(d)); }
+  if(!state.costs.hp) state.costs.hp = 10; // セーブデータ互換性用
+  if(!state.studyLogs) state.studyLogs = {};
+  if(!state.totalKills) state.totalKills = 0;
+  if(!state.achievements) state.achievements = achievementsList;
+  
+  if (window.initSync) {
+    window.initSync((remoteData) => {
+      state = Object.assign(state, remoteData);
+      setTheme(state.currentTheme || 'default');
+      render();
+    });
+  }
+
+  setTheme(state.currentTheme || 'default');
+  render();
+  checkLoginBonus();
+}
+
+    function addLog(msg, type="") {
+      const box = document.getElementById('log-box');
+      const div = document.createElement('div');
+      div.className = `log-entry ${type}`;
+      div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      box.prepend(div);
+    }
+
+    function recordStudyMinutes(minutes) {
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      if(!state.studyLogs[dateStr]) {
+        state.studyLogs[dateStr] = 0;
+      }
+      state.studyLogs[dateStr] += minutes;
+      checkAchievements();
+    }
+
+    function addCustomQuest() {
+      const titleInput = document.getElementById('new-q-title');
+      const minInput = document.getElementById('new-q-min');
+      const title = titleInput.value.trim();
+      const min = parseInt(minInput.value);
+
+      if(!title || isNaN(min) || min <= 0) {
+        alert("クエスト名と正しい時間（分）を入力してください！");
+        return;
+      }
+
+      const newQuest = { id: Date.now(), title: title, min: min, xp: min * 7, done: false };
+      state.quests.push(newQuest);
+      titleInput.value = "";
+      addLog(`✨ クエスト【${title}】を追加しました！`, 'level');
+      save(); render();
+    }
+
+    function deleteQuest(id) {
+      if(!confirm("このクエストを削除しますか？")) return;
+      state.quests = state.quests.filter(q => q.id !== id);
+      save(); render();
+    }
+
+    function nextEnemy() {
+      state.stage++;
+      state.totalKills++;
+      state.isBoss = (state.stage % 5 === 0);
+      if(state.isBoss) {
+        let bName = bossNames[(Math.floor(state.stage / 5) - 1) % bossNames.length];
+        state.enemyName = `${bName}`;
+        state.enemyMaxHp = Math.round(3500 * Math.pow(1.5, Math.floor(state.stage / 5)));
+      } else {
+        let mName = mobNames[Math.floor(Math.random() * mobNames.length)];
+        state.enemyName = `${mName}`;
+        state.enemyMaxHp = Math.round(800 * Math.pow(1.3, state.stage - 1));
+      }
+      state.enemyHp = state.enemyMaxHp;
+      addLog(`⚔️ STAGE ${state.stage}: 【${state.enemyName}】が出現！`, 'level');
+      checkAchievements();
+    }
+
+    function dealDamage(minutes, sourceName, directDmg = null) {
+      let dmg = 0;
+      if(directDmg !== null) {
+        dmg = directDmg;
+      } else {
+        let isCrit = Math.random() * 100 < state.stats.crit;
+        dmg = Math.round(minutes * state.stats.atk * (isCrit ? 1.5 : 1.0) * state.damageMultiplier);
+        if(state.damageMultiplier > 1.0) state.damageMultiplier = 1.0;
+      }
+
+      state.enemyHp = Math.max(0, state.enemyHp - dmg);
+      playSE(300, 'square');
+      document.getElementById('canvas-container').classList.add('shake');
+      setTimeout(() => document.getElementById('canvas-container').classList.remove('shake'), 300);
+
+      addLog(`${sourceName}！ ${state.enemyName} に ${dmg} ダメージ！`, 'damage');
+
+      if(state.enemyHp <= 0) {
+        addLog(`🎉 【${state.enemyName}】を討伐！`, 'level');
+        playSE(523, 'triangle');
+        nextEnemy();
+      }
+      save(); render();
+    }
+
+    function addXP(amount) {
+      let finalXp = Math.round(amount * state.stats.boost * state.stats.xpBoost);
+      state.xp += finalXp;
+      addLog(`+${finalXp} XP 獲得！`);
+      while(state.xp >= state.maxXp) {
+        state.xp -= state.maxXp;
+        state.level++;
+        state.maxXp = Math.round(state.maxXp * 1.25);
+        let earnedMp = Math.round(10 * state.level * state.stats.boost);
+        state.mp += earnedMp;
+        playSE(600, 'sine');
+        addLog(`🎊 LEVEL UP! Lv.${state.level} に到達！ (MP +${earnedMp})`, 'level');
+      }
+      save(); render();
+    }
+
+    function upgrade(type) {
+      if(state.mp < state.costs[type]) return alert("MPが足りません！");
+      state.mp -= state.costs[type];
+      
+      if(type === 'hp') {
+        state.maxHp += 20;
+        state.hp += 20; // 最大値アップと同時に回復
+        state.costs.hp = Math.round(state.costs.hp * 1.25);
+        addLog(`❤️ 最大体力が強化され ${state.maxHp} にアップ！`, 'heal');
+      } else if(type === 'atk') {
+        state.stats.atk += 5;
+        state.costs.atk = Math.round(state.costs.atk * 1.25);
+      } else if(type === 'xpBoost') {
+        state.stats.xpBoost = parseFloat((state.stats.xpBoost + 0.2).toFixed(1));
+        state.costs.xpBoost = Math.round(state.costs.xpBoost * 1.3);
+      } else if(type === 'def') {
+        state.stats.def = Math.min(80, state.stats.def + 3);
+        state.costs.def = Math.round(state.costs.def * 1.3);
+      } else if(type === 'crit') {
+        state.stats.crit += 3;
+        state.costs.crit = Math.round(state.costs.crit * 1.35);
+      } else if(type === 'boost') {
+        state.stats.boost = parseFloat((state.stats.boost + 0.1).toFixed(1));
+        state.costs.boost = Math.round(state.costs.boost * 1.4);
+      }
+      
+      playSE(700, 'sine'); save(); render();
+    }
+
+    function buyItem(type) {
+      if(type === 'potion') {
+        if(state.mp < 15) return alert("MPが足りません！");
+        state.mp -= 15; state.hp = Math.min(state.maxHp, state.hp + 50);
+        addLog(`🧪 ポーション使用！ HPが50回復！`, 'heal');
+      } else if(type === 'bomb') {
+        if(state.mp < 30) return alert("MPが足りません！");
+        state.mp -= 30; dealDamage(0, "💣 爆裂魔法", 1000);
+      } else if(type === 'coffee') {
+        if(state.mp < 10) return alert("MPが足りません！");
+        if(state.hp <= 20) return alert("HPが足りません！");
+        state.mp -= 10; state.hp -= 20; state.damageMultiplier = 1.5;
+        addLog(`☕ 徹夜のコーヒーを飲み干した！ 次の攻撃威力 1.5倍！`, 'level');
+      }
+      save(); render();
+    }
+
+    function buyRewardTicket() {
+      if(state.mp < 30) return alert("MPが足りません！");
+      let rewardName = prompt("自分へのご褒美を入力してください（例: コンビニのアイスを買う、動画1時間見る）");
+      if(!rewardName) return;
+      state.mp -= 30;
+      state.inventory.push({ type: 'ticket', id: Date.now(), name: `🎫 ご褒美券: ${rewardName}` });
+      addLog(`🎫 ご褒美チケット【${rewardName}】を購入しました！`, 'level');
+      save(); render();
+    }
+
+    function buyTitle(titleName, cost) {
+      if(state.inventory.some(x => x.id === titleName)) return alert("すでに持っています！");
+      if(state.mp < cost) return alert("MPが足りません！");
+      state.mp -= cost;
+      state.inventory.push({ type: 'title', id: titleName, name: `肩書き: ${titleName}` });
+      setTitle(titleName);
+      addLog(`👑 称号【${titleName}】を獲得・装備しました！`, 'level');
+      save(); render();
+    }
+
+    function buyTheme(themeId, themeName, cost) {
+      if(state.inventory.some(x => x.id === themeId)) return alert("すでに持っています！");
+      if(state.mp < cost) return alert("MPが足りません！");
+      state.mp -= cost;
+      state.inventory.push({ type: 'theme', id: themeId, name: themeName });
+      setTheme(themeId);
+      addLog(`🎨 背景テーマ【${themeName}】を獲得・適用しました！`, 'level');
+      save(); render();
+    }
+
+    function setTheme(themeId) {
+      state.currentTheme = themeId;
+      document.getElementById('body-root').className = `theme-${themeId}`;
+      save(); render();
+    }
+
+    function setTitle(titleName) {
+      state.currentTitle = titleName;
+      save(); render();
+    }
+
+    function useTicket(id) {
+      state.inventory = state.inventory.filter(x => x.id !== id);
+      addLog(`🎉 ご褒美チケットを使用しました！自分にご褒美をあげましょう！`, 'heal');
+      playSE(880, 'triangle');
+      save(); render();
+    }
+
+    function finishDay() {
+      let unfinished = state.quests.filter(q => !q.done);
+      if(unfinished.length === 0) {
+        addLog(`🌟 本日の全クエスト達成！ PERFECT BLOCK!`, 'heal');
+        state.streak++; addXP(300);
+      } else {
+        let rawDmg = unfinished.length * 20;
+        let finalDmg = Math.round(rawDmg * (1 - state.stats.def / 100));
+        state.hp = Math.max(0, state.hp - finalDmg);
+        addLog(`😈 未達成 ${unfinished.length}件！ 敵から ${finalDmg} ダメージを受けた！`, 'damage');
+        if(state.hp <= 0) {
+          addLog(`💀 体力が尽きた... 全回復して再挑戦！`, 'damage');
+          state.hp = state.maxHp;
+        }
+      }
+      state.quests.forEach(q => q.done = false);
+      checkAchievements();
+      save(); render();
+    }
+
+    function startQuestTimer(id) {
+      let q = state.quests.find(x => x.id === id);
+      if(!q) return;
+      activeQuestId = id;
+      document.getElementById('active-quest-label').innerText = `🎯 進行中: ${q.title}`;
+      setTimerMinutes(q.min, id);
+    }
+
+    let timerId = null, timeLeft = 1500, selectedMinutes = 25;
+    function setTimerMinutes(m, qId = null) {
+      selectedMinutes = m; timeLeft = m * 60;
+      if(!qId) {
+        activeQuestId = null;
+        document.getElementById('active-quest-label').innerText = "フリー集中モード";
+      }
+      updateTimerDisplay();
+    }
+    function updateTimerDisplay() {
+      let m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+      let s = (timeLeft % 60).toString().padStart(2, '0');
+      document.getElementById('timer-display').innerText = `${m}:${s}`;
+    }
+    function toggleTimer() {
+      const btn = document.getElementById('timer-btn');
+      if(timerId) {
+        clearInterval(timerId); timerId = null;
+        btn.innerText = "スタート";
+      } else {
+        btn.innerText = "一時停止";
+        timerId = setInterval(() => {
+          timeLeft--;
+          updateTimerDisplay();
+          if(timeLeft <= 0) {
+            clearInterval(timerId); timerId = null;
+            btn.innerText = "スタート";
+            
+            if(activeQuestId) {
+              let q = state.quests.find(x => x.id === activeQuestId);
+              if(q) {
+                q.done = true;
+                addLog(`🎯 クエスト【${q.title}】達成！`, 'heal');
+                addXP(q.xp);
+                dealDamage(q.min, `クエスト達成 [${q.title}]`);
+                recordStudyMinutes(q.min);
+              }
+            } else {
+              addLog(`⏱️ ${selectedMinutes}分間の集中達成！`, 'heal');
+              addXP(selectedMinutes * 5);
+              dealDamage(selectedMinutes, `${selectedMinutes}分集中`);
+              recordStudyMinutes(selectedMinutes);
+            }
+            activeQuestId = null;
+            document.getElementById('active-quest-label').innerText = "フリー集中モード";
+            timeLeft = selectedMinutes * 60;
+            updateTimerDisplay();
+          }
+        }, 1000);
+      }
+    }
+
+    function checkAchievements() {
+      let totalMins = Object.values(state.studyLogs).reduce((a,b)=>a+b, 0);
+      state.achievements.forEach(ach => {
+        if(ach.cleared) return;
+        let clear = false;
+        if(ach.targetMinutes && totalMins >= ach.targetMinutes) clear = true;
+        if(ach.targetStreak && state.streak >= ach.targetStreak) clear = true;
+        if(ach.targetKills && state.totalKills >= ach.targetKills) clear = true;
+
+        if(clear) {
+          ach.cleared = true;
+          state.mp += ach.rewardMp;
+          addLog(`🏆 実績解禁！【${ach.title}】 (+${ach.rewardMp} MP獲得)`, 'level');
+          playSE(880, 'triangle');
+        }
+      });
+    }
+
+    function changeWeek(delta) {
+      weekOffset += delta;
+      renderAnalytics();
+    }
+
+    // 📊 Studyplus風 月曜〜日曜 7日間計算 & 履歴閲覧
+    function renderAnalytics() {
+      const chartEl = document.getElementById('weekly-chart');
+      chartEl.innerHTML = "";
+
+      const today = new Date();
+      
+      // 今週の月曜日を取得（日曜(0)の場合は前週の月曜）
+      const dayOfWeek = today.getDay();
+      const distToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+      
+      const targetMonday = new Date(today);
+      targetMonday.setDate(today.getDate() + distToMonday + (weekOffset * 7));
+
+      const targetSunday = new Date(targetMonday);
+      targetSunday.setDate(targetMonday.getDate() + 6);
+
+      // その前の週の月曜日
+      const lastMonday = new Date(targetMonday);
+      lastMonday.setDate(targetMonday.getDate() - 7);
+
+      let targetWeekMins = 0;
+      let lastWeekMins = 0;
+      let dayNodes = [];
+
+      // 表示週（月〜日）の7日間を集計
+      for(let i = 0; i < 7; i++) {
+        let d = new Date(targetMonday);
+        d.setDate(targetMonday.getDate() + i);
+        let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        let mins = state.studyLogs[dateStr] || 0;
+        targetWeekMins += mins;
+
+        let labelStr = `${weekdayLabels[i]} (${d.getMonth()+1}/${d.getDate()})`;
+        dayNodes.push({ dateStr, label: labelStr, mins });
+      }
+
+      // その前の週の7日間を集計
+      for(let i = 0; i < 7; i++) {
+        let d = new Date(lastMonday);
+        d.setDate(lastMonday.getDate() + i);
+        let dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        lastWeekMins += (state.studyLogs[dateStr] || 0);
+      }
+
+      // 期間タグの更新
+      let weekTagPrefix = (weekOffset === 0) ? "今週" : (weekOffset === -1) ? "先週" : `${Math.abs(weekOffset)}週前`;
+      document.getElementById('week-period-text').innerText = 
+        `📅 ${weekTagPrefix}: ${targetMonday.getMonth()+1}/${targetMonday.getDate()} 〜 ${targetSunday.getMonth()+1}/${targetSunday.getDate()}`;
+
+      document.getElementById('this-week-title').innerText = `${weekTagPrefix}の合計`;
+
+      // 前週比（%）計算
+      let compBadgeEl = document.getElementById('comp-badge');
+      if(lastWeekMins === 0) {
+        if(targetWeekMins > 0) {
+          compBadgeEl.innerText = "前週比: +100% 📈";
+          compBadgeEl.className = "comparison-badge badge-up";
+        } else {
+          compBadgeEl.innerText = "前週比: 0%";
+          compBadgeEl.className = "comparison-badge badge-up";
+        }
+      } else {
+        let diffPct = (((targetWeekMins - lastWeekMins) / lastWeekMins) * 100).toFixed(1);
+        if(diffPct >= 0) {
+          compBadgeEl.innerText = `前週比: +${diffPct}% 📈`;
+          compBadgeEl.className = "comparison-badge badge-up";
+        } else {
+          compBadgeEl.innerText = `前週比: ${diffPct}% 📉`;
+          compBadgeEl.className = "comparison-badge badge-down";
+        }
+      }
+
+      let totalMinsAll = Object.values(state.studyLogs).reduce((a,b)=>a+b, 0);
+      document.getElementById('this-week-total').innerText = `${targetWeekMins}分`;
+      document.getElementById('last-week-total').innerText = `${lastWeekMins}分`;
+      document.getElementById('total-study-time').innerText = `${(totalMinsAll/60).toFixed(1)}時間`;
+
+      let maxMins = Math.max(...dayNodes.map(d => d.mins), 120);
+
+      dayNodes.forEach(item => {
+        let pct = (item.mins / maxMins) * 100;
+        let hoursText = (item.mins >= 60) ? ` (${Math.floor(item.mins/60)}時間${item.mins%60}分)` : "";
+
+        let wrapper = document.createElement('div');
+        wrapper.className = "chart-bar-wrapper";
+
+        wrapper.innerHTML = `
+          <div class="chart-tooltip">${item.dateStr}<br><strong>${item.mins}分</strong>${hoursText}</div>
+          <div class="chart-bar" style="height: ${Math.max(pct, 4)}%;"></div>
+          <div class="chart-label">${item.label}</div>
+        `;
+        chartEl.appendChild(wrapper);
+      });
+    }
+
+    function render() {
+      document.getElementById('title-display').innerText = state.currentTitle;
+      document.getElementById('p-level').innerText = state.level;
+      document.getElementById('p-mp').innerText = state.mp;
+      document.getElementById('p-streak').innerText = `${state.streak}日`;
+      
+      document.getElementById('hp-text').innerText = `${state.hp} / ${state.maxHp}`;
+      document.getElementById('hp-bar').style.width = `${(state.hp/state.maxHp)*100}%`;
+      
+      document.getElementById('xp-text').innerText = `${state.xp} / ${state.maxXp}`;
+      document.getElementById('xp-bar').style.width = `${(state.xp/state.maxXp)*100}%`;
+
+      document.getElementById('enemy-title').innerText = `STAGE ${state.stage} - ${state.enemyName}`;
+      document.getElementById('enemy-hp-text').innerText = `${state.enemyHp} / ${state.enemyMaxHp}`;
+      document.getElementById('enemy-hp-bar').style.width = `${(state.enemyHp/state.enemyMaxHp)*100}%`;
+
+      document.getElementById('st-maxHp').innerText = state.maxHp;
+      document.getElementById('cost-hp').innerText = state.costs.hp;
+      document.getElementById('st-atk').innerText = state.stats.atk;
+      document.getElementById('cost-atk').innerText = state.costs.atk;
+      document.getElementById('st-xpBoost').innerText = state.stats.xpBoost;
+      document.getElementById('cost-xpBoost').innerText = state.costs.xpBoost;
+      document.getElementById('st-def').innerText = state.stats.def;
+      document.getElementById('cost-def').innerText = state.costs.def;
+      document.getElementById('st-crit').innerText = state.stats.crit;
+      document.getElementById('cost-crit').innerText = state.costs.crit;
+      document.getElementById('st-boost').innerText = state.stats.boost;
+      document.getElementById('cost-boost').innerText = state.costs.boost;
+
+      renderAnalytics();
+
+      const invContainer = document.getElementById('inventory-list');
+      invContainer.innerHTML = "";
+      if(state.inventory.length === 0) {
+        invContainer.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color:var(--text-sub); font-size:0.8rem;">所持品はありません</div>`;
+      } else {
+        state.inventory.forEach(item => {
+          let div = document.createElement('div');
+          div.className = "item-card";
+          let actionBtn = "";
+          
+          if(item.type === 'theme') {
+            let isCurrent = state.currentTheme === item.id;
+            actionBtn = `<button class="${isCurrent ? 'secondary' : 'purple'}" style="padding:6px; font-size:0.75rem;" onclick="setTheme('${item.id}')">${isCurrent ? '適用中' : '適用'}</button>`;
+          } else if(item.type === 'title') {
+            let isCurrent = state.currentTitle === item.id;
+            actionBtn = `<button class="${isCurrent ? 'secondary' : 'purple'}" style="padding:6px; font-size:0.75rem;" onclick="setTitle('${item.id}')">${isCurrent ? '装備中' : '装備'}</button>`;
+          } else if(item.type === 'ticket') {
+            actionBtn = `<button class="gold" style="padding:6px; font-size:0.75rem;" onclick="useTicket(${item.id})">ご褒美を使う！</button>`;
+          }
+
+          div.innerHTML = `
+            <div>
+              <div style="font-weight:bold; font-size:0.82rem;">${item.name}</div>
+            </div>
+            ${actionBtn}
+          `;
+          invContainer.appendChild(div);
+        });
+      }
+
+      const qContainer = document.getElementById('quest-list');
+      qContainer.innerHTML = "";
+      state.quests.forEach(q => {
+        let div = document.createElement('div');
+        div.className = `quest-item ${q.done ? 'done' : ''}`;
+        
+        let actionBtnHTML = "";
+        if(q.done) {
+          actionBtnHTML = `
+            <span style="color:var(--success); font-weight:bold; font-size:0.75rem;">✅ 達成</span>
+            <button style="padding:6px 10px; font-size:0.75rem;" class="gold" onclick="startQuestTimer(${q.id})">🔄 もう1周</button>
+          `;
+        } else {
+          actionBtnHTML = `<button style="padding:6px 12px; font-size:0.78rem;" onclick="startQuestTimer(${q.id})">⚔️ 挑む</button>`;
+        }
+
+        div.innerHTML = `
+          <div class="quest-info">
+            <span class="quest-title">${q.title}</span>
+            <span class="quest-meta">⏱️ 所要: ${q.min}分 / 🎁 ${Math.round(q.xp * state.stats.xpBoost)} XP / ⚔️ 威力: ${Math.round(q.min * state.stats.atk * state.damageMultiplier)}</span>
+          </div>
+          <div class="quest-actions">
+            ${actionBtnHTML}
+            <button class="btn-del" onclick="deleteQuest(${q.id})" title="削除">✕</button>
+          </div>
+        `;
+        qContainer.appendChild(div);
+      });
+
+      const achContainer = document.getElementById('achievement-list');
+      achContainer.innerHTML = "";
+      state.achievements.forEach(ach => {
+        let div = document.createElement('div');
+        div.className = `achieve-item ${ach.cleared ? 'cleared' : ''}`;
+        div.innerHTML = `
+          <div>
+            <div style="font-weight:bold; ${ach.cleared ? 'color:var(--accent-gold);' : ''}">${ach.title} ${ach.cleared ? '✅' : ''}</div>
+            <div style="font-size:0.72rem; color:var(--text-sub);">${ach.desc}</div>
+          </div>
+          <div style="font-weight:bold; color:var(--accent-purple); font-size:0.75rem;">
+            ${ach.cleared ? '達成済み' : `報酬: +${ach.rewardMp} MP`}
+          </div>
+        `;
+        achContainer.appendChild(div);
+      });
+    }
+
+    load();
+  </script>
+</body>
+</html>
